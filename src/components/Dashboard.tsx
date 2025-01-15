@@ -20,19 +20,17 @@ function Dashboard({ onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-<<<<<<< HEAD
     const initializeDashboard = async () => {
-      await fetchUserProfile();
-      await fetchAccountHeads();
-      await fetchVouchers();
+      try {
+        await fetchUserProfile();
+        await fetchAccountHeads();
+        await fetchVouchers();
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+      }
     };
 
     initializeDashboard();
-=======
-    fetchUserProfile();
-    fetchAccountHeads();
-    fetchVouchers();
->>>>>>> origin/main
   }, [activeTab]);
 
   const fetchUserProfile = async () => {
@@ -40,10 +38,6 @@ function Dashboard({ onLogout }: DashboardProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-<<<<<<< HEAD
-=======
-      // Simple query to avoid recursion
->>>>>>> origin/main
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
@@ -51,24 +45,18 @@ function Dashboard({ onLogout }: DashboardProps) {
         .single();
 
       if (error) throw error;
-<<<<<<< HEAD
-      
+
       if (data) {
         setUserRole(data.role);
         if (data.role === 'admin') {
           await fetchUsers();
         }
-=======
-      if (data) {
-        setUserRole(data.role);
->>>>>>> origin/main
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
   };
 
-<<<<<<< HEAD
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
@@ -83,19 +71,13 @@ function Dashboard({ onLogout }: DashboardProps) {
     }
   };
 
-=======
->>>>>>> origin/main
   const fetchAccountHeads = async () => {
     try {
       const { data, error } = await supabase
         .from('account_heads')
         .select('*')
-<<<<<<< HEAD
         .eq('active', true)
         .order('name');
-=======
-        .eq('active', true);
->>>>>>> origin/main
 
       if (error) throw error;
       setAccountHeads(data || []);
@@ -106,26 +88,17 @@ function Dashboard({ onLogout }: DashboardProps) {
 
   const fetchVouchers = async () => {
     try {
-<<<<<<< HEAD
-=======
-      // Use proper join syntax
->>>>>>> origin/main
       const { data, error } = await supabase
         .from('payment_vouchers')
         .select(`
           *,
-<<<<<<< HEAD
           account_heads (
-=======
-          account_heads!payment_vouchers_account_head_fkey (
->>>>>>> origin/main
             name
           ),
           profiles!payment_vouchers_requested_by_fkey (
             name
           )
         `)
-<<<<<<< HEAD
         .eq('status', activeTab)
         .order('created_at', { ascending: false });
 
@@ -146,17 +119,6 @@ function Dashboard({ onLogout }: DashboardProps) {
         approvedDate: voucher.approved_date,
         rejectedBy: voucher.rejected_by,
         rejectedDate: voucher.rejected_date
-=======
-        .eq('status', activeTab);
-
-      if (error) throw error;
-
-      // Transform the data to match the expected format
-      const transformedVouchers = data?.map(voucher => ({
-        ...voucher,
-        accountHead: voucher.account_heads?.name,
-        requestedBy: voucher.profiles?.name,
->>>>>>> origin/main
       }));
 
       setVouchers(transformedVouchers || []);
@@ -167,7 +129,6 @@ function Dashboard({ onLogout }: DashboardProps) {
     }
   };
 
-<<<<<<< HEAD
   const handleNewPayment = async (payment: {
     payee: string;
     accountHead: string;
@@ -378,11 +339,6 @@ function Dashboard({ onLogout }: DashboardProps) {
         )}
       </main>
     </div>
-=======
-  // Rest of the component remains the same...
-  return (
-    // ... existing JSX
->>>>>>> origin/main
   );
 }
 
