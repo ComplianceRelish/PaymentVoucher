@@ -1,73 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { PaymentVoucher, UserRole, User, AccountHead } from '../types';
 import PaymentList from './PaymentList';
 import NewPaymentForm from './NewPaymentForm';
 import AdminDashboard from './AdminDashboard';
 import { IndianRupee, Clock, CheckCircle, XCircle, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Session } from '@supabase/supabase-js';
 
 interface DashboardProps {
-  onLogout: () => void;
+  session: Session;
+  role: UserRole;
+  onLogout: () => Promise<void>;
 }
 
-function Dashboard({ onLogout }: DashboardProps) {
+function Dashboard({ session, role, onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
-  const [userRole, setUserRole] = useState<UserRole>('requester');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeDashboard = async () => {
-      try {
-        await fetchUserProfile();
-        await fetchAccountHeads();
-        await fetchVouchers();
-      } catch (error) {
-        console.error('Error initializing dashboard:', error);
-      }
-    };
-
-    initializeDashboard();
-  }, [activeTab]);
+    fetchUserProfile();
+    fetchAccountHeads();
+    fetchVouchers();
+  }, [session.user.id]); // Re-fetch when user ID changes
 
   const fetchUserProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+        .select('*')
+        .eq('id', session.user.id);
 
       if (error) throw error;
 
-      if (data) {
-        setUserRole(data.role);
-        if (data.role === 'admin') {
-          await fetchUsers();
-        }
+      if (profiles) {
+        setUsers(profiles.map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          role: profile.role,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at
+        })));
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
@@ -77,10 +56,19 @@ function Dashboard({ onLogout }: DashboardProps) {
         .from('account_heads')
         .select('*')
         .eq('active', true)
-        .order('name');
+        .order('name', { ascending: true });
 
       if (error) throw error;
-      setAccountHeads(data || []);
+
+      if (data) {
+        setAccountHeads(data.map(head => ({
+          id: head.id,
+          name: head.name,
+          code: head.code,
+          created_at: head.created_at,
+          updated_at: head.updated_at
+        })));
+      }
     } catch (error) {
       console.error('Error fetching account heads:', error);
     }
@@ -88,43 +76,46 @@ function Dashboard({ onLogout }: DashboardProps) {
 
   const fetchVouchers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('payment_vouchers')
-        .select(`
-          *,
-          account_heads (
-            name
-          ),
-          profiles!payment_vouchers_requested_by_fkey (
-            name
-          )
-        `)
+        .select('*, profiles(name), account_heads(name)')
         .eq('status', activeTab)
         .order('created_at', { ascending: false });
 
+      // Filter vouchers based on user role
+      if (role === 'requester') {
+        query = query.eq('requested_by', session.user.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
-      const transformedVouchers = data?.map(voucher => ({
-        id: voucher.id,
-        voucherNumber: voucher.voucher_number,
-        date: voucher.date,
-        payee: voucher.payee,
-        accountHead: voucher.account_heads?.name || '',
-        description: voucher.description,
-        amount: voucher.amount,
-        status: voucher.status,
-        requestedBy: voucher.profiles?.name || '',
-        requestedDate: voucher.requested_date,
-        approvedBy: voucher.approved_by,
-        approvedDate: voucher.approved_date,
-        rejectedBy: voucher.rejected_by,
-        rejectedDate: voucher.rejected_date
-      }));
-
-      setVouchers(transformedVouchers || []);
+      if (data) {
+        const formattedVouchers: PaymentVoucher[] = data.map(voucher => ({
+          id: voucher.id,
+          voucherNumber: voucher.voucher_number,
+          date: voucher.date,
+          payee: voucher.payee,
+          accountHead: voucher.account_head_id,
+          description: voucher.description,
+          amount: voucher.amount,
+          status: voucher.status,
+          requestedBy: voucher.requested_by,
+          requestedDate: voucher.requested_date,
+          approvedBy: voucher.approved_by,
+          approvedDate: voucher.approved_date,
+          rejectedBy: voucher.rejected_by,
+          rejectedDate: voucher.rejected_date,
+          requester_id: voucher.requested_by,
+          created_at: voucher.created_at,
+          updated_at: voucher.updated_at
+        }));
+        setVouchers(formattedVouchers);
+      }
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching vouchers:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -217,9 +208,9 @@ function Dashboard({ onLogout }: DashboardProps) {
             </div>
             <div className="flex items-center space-x-4">
               <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm capitalize">
-                {userRole}
+                {role}
               </span>
-              {userRole === 'admin' && (
+              {role === 'admin' && (
                 <button
                   onClick={() => setShowAdminPanel(!showAdminPanel)}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
@@ -240,7 +231,7 @@ function Dashboard({ onLogout }: DashboardProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {userRole === 'admin' && showAdminPanel ? (
+        {role === 'admin' && showAdminPanel ? (
           <AdminDashboard
             users={users}
             accountHeads={accountHeads}
@@ -311,7 +302,7 @@ function Dashboard({ onLogout }: DashboardProps) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {userRole === 'requester' && activeTab === 'pending' && (
+              {role === 'requester' && activeTab === 'pending' && (
                 <div className="lg:col-span-1">
                   <NewPaymentForm
                     onSubmit={handleNewPayment}
@@ -319,7 +310,7 @@ function Dashboard({ onLogout }: DashboardProps) {
                   />
                 </div>
               )}
-              <div className={userRole === 'requester' && activeTab === 'pending' ? 'lg:col-span-2' : 'lg:col-span-3'}>
+              <div className={role === 'requester' && activeTab === 'pending' ? 'lg:col-span-2' : 'lg:col-span-3'}>
                 {loading ? (
                   <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -330,7 +321,7 @@ function Dashboard({ onLogout }: DashboardProps) {
                     onApprove={handleApprove}
                     onReject={handleReject}
                     onDownload={handleDownload}
-                    userRole={userRole}
+                    userRole={role}
                   />
                 )}
               </div>
