@@ -10,14 +10,15 @@ import { testSupabaseConnection } from './lib/supabaseTest';
 console.log('Environment check:', {
   hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
   hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-  env: import.meta.env.MODE
+  env: import.meta.env.MODE,
+  fullUrl: import.meta.env.VITE_SUPABASE_URL // Log the full URL for debugging
 });
 
 function App() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
 
@@ -25,17 +26,24 @@ function App() {
     // Initialize auth state and test connection
     const initializeAuth = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         // Test Supabase connection
         const isConnected = await testSupabaseConnection();
         if (!isConnected) {
           throw new Error('Failed to connect to Supabase');
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
         setSession(session);
       } catch (error) {
         console.error('Error initializing auth:', error);
-        setError('Failed to initialize authentication. Please refresh the page.');
+        setError(error instanceof Error ? error.message : 'Failed to initialize authentication');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -50,6 +58,34 @@ function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
