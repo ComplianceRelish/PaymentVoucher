@@ -3,6 +3,8 @@ import { UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import { IndianRupee, Users, FileText, CheckSquare, ArrowLeft } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { Session } from '@supabase/supabase-js';
+import { testSupabaseConnection } from './lib/supabaseTest';
 
 function App() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -10,81 +12,90 @@ function App() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    const initializeApp = async () => {
+    // Initialize auth state and test connection
+    const initializeAuth = async () => {
       try {
+        // Test Supabase connection
+        const isConnected = await testSupabaseConnection();
+        if (!isConnected) {
+          throw new Error('Failed to connect to Supabase');
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
-      } catch (error: any) {
-        console.error('Error initializing app:', error);
-        setError('Failed to initialize application. Please try again.');
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setError('Failed to initialize authentication. Please refresh the page.');
       }
     };
 
-    initializeApp();
+    initializeAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // First, try to sign in
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
-        if (signInError.message === 'Invalid login credentials') {
-          setError('Invalid email or password. Please check your credentials and try again.');
-        } else {
-          setError(signInError.message);
-        }
+        throw signInError;
+      }
+
+      if (!data.user) {
+        throw new Error('No user data returned');
+      }
+
+      // Get user profile and verify role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // Role verification
+      if (profile?.role === 'admin') {
+        // Admins can access any role
         return;
       }
 
-      if (data.user) {
-        // After successful sign in, get the user's profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-          setError('Error fetching user profile. Please try again.');
-          await supabase.auth.signOut();
-          return;
-        }
-
-        // For admin users, allow login regardless of selected role
-        if (profile?.role === 'admin') {
-          return; // Allow login to proceed
-        }
-
-        // For non-admin users, verify role matches
-        if (selectedRole && profile?.role !== selectedRole) {
-          await supabase.auth.signOut();
-          setError(`Access denied. You don't have ${selectedRole} privileges.`);
-          return;
-        }
+      if (selectedRole && profile?.role !== selectedRole) {
+        await supabase.auth.signOut();
+        throw new Error(`Access denied. You don't have ${selectedRole} privileges.`);
       }
+
     } catch (error: any) {
-      console.error('Login error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError(error.message || 'An unexpected error occurred');
+      if (error.message !== 'Access denied.') {
+        console.error('Login error:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -94,17 +105,24 @@ function App() {
     try {
       await supabase.auth.signOut();
       setSelectedRole(null);
-      setEmail('');
-      setPassword('');
-      setError(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error signing out:', error);
       setError('Failed to sign out. Please try again.');
     }
   };
 
-  if (session) {
-    return <Dashboard onLogout={handleLogout} />;
+  const handleRoleSelect = (role: UserRole) => {
+    setSelectedRole(role);
+    setError(null);
+  };
+
+  const handleBack = () => {
+    setSelectedRole(null);
+    setError(null);
+  };
+
+  if (session && selectedRole) {
+    return <Dashboard session={session} role={selectedRole} onLogout={handleLogout} />;
   }
 
   return (
@@ -114,10 +132,7 @@ function App() {
         <header className="py-8">
           <div className="flex items-center justify-center space-x-4">
             <IndianRupee className="w-12 h-12 text-blue-600" />
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900">Relish Foods Pvt Ltd</h1>
-              <p className="text-lg text-gray-600">Payment Approval System</p>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">Payment Voucher System</h1>
           </div>
         </header>
 
@@ -127,102 +142,84 @@ function App() {
             <div className="p-8">
               {selectedRole ? (
                 <div>
-                  <div className="mb-6">
-                    <button
-                      onClick={() => {
-                        setSelectedRole(null);
-                        setError(null);
-                      }}
-                      className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to role selection
-                    </button>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Login as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
-                  </h3>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    {error && (
-                      <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-                        {error}
+                  <button
+                    onClick={handleBack}
+                    className="mb-6 flex items-center text-gray-600 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to role selection
+                  </button>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+                    Login as {selectedRole}
+                  </h2>
+                  <form onSubmit={handleLogin}>
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          required
+                        />
                       </div>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
-                    >
-                      {loading ? 'Logging in...' : 'Login'}
-                    </button>
+                      <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          id="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      {error && (
+                        <div className="text-red-600 text-sm mt-2">{error}</div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        {loading ? 'Signing in...' : 'Sign in'}
+                      </button>
+                    </div>
                   </form>
                 </div>
               ) : (
-                <>
-                  <h2 className="text-2xl font-semibold text-gray-900 text-center mb-6">
-                    Select Your Role
-                  </h2>
-                  <div className="flex flex-col space-y-4 mb-8">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">Select Your Role</h2>
+                  <div className="grid grid-cols-1 gap-4">
                     <button
-                      onClick={() => setSelectedRole('admin')}
-                      className="flex items-center space-x-4 p-4 rounded-lg transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                      onClick={() => handleRoleSelect('requester')}
+                      className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
                     >
-                      <Users className="w-6 h-6" />
-                      <div className="flex flex-col items-start">
-                        <span className="font-semibold">Administrator</span>
-                        <span className="text-sm opacity-90">Manage users and account heads</span>
-                      </div>
+                      <Users className="w-6 h-6 mr-2 text-blue-600" />
+                      <span className="text-lg font-medium">Requester</span>
                     </button>
-
                     <button
-                      onClick={() => setSelectedRole('requester')}
-                      className="flex items-center space-x-4 p-4 rounded-lg transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                      onClick={() => handleRoleSelect('approver')}
+                      className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
                     >
-                      <FileText className="w-6 h-6" />
-                      <div className="flex flex-col items-start">
-                        <span className="font-semibold">Requester</span>
-                        <span className="text-sm opacity-90">Create and manage payment vouchers</span>
-                      </div>
+                      <CheckSquare className="w-6 h-6 mr-2 text-blue-600" />
+                      <span className="text-lg font-medium">Approver</span>
                     </button>
-
                     <button
-                      onClick={() => setSelectedRole('approver')}
-                      className="flex items-center space-x-4 p-4 rounded-lg transition-all bg-gray-50 text-gray-700 hover:bg-gray-100"
+                      onClick={() => handleRoleSelect('admin')}
+                      className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
                     >
-                      <CheckSquare className="w-6 h-6" />
-                      <div className="flex flex-col items-start">
-                        <span className="font-semibold">Approver</span>
-                        <span className="text-sm opacity-90">Review and approve payment requests</span>
-                      </div>
+                      <FileText className="w-6 h-6 mr-2 text-blue-600" />
+                      <span className="text-lg font-medium">Admin</span>
                     </button>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
