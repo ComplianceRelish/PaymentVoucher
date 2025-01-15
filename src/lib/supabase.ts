@@ -6,9 +6,10 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 // Debug configuration
-console.log('Supabase Configuration:', {
+console.log('Supabase Configuration Check:', {
   url: supabaseUrl,
-  hasKey: !!supabaseKey,
+  keyLength: supabaseKey?.length || 0,
+  keyPrefix: supabaseKey?.substring(0, 8),
   mode: import.meta.env.MODE
 });
 
@@ -17,6 +18,14 @@ if (!supabaseUrl || !supabaseKey) {
     'Missing Supabase configuration. Please check your environment variables:\n' +
     `VITE_SUPABASE_URL: ${supabaseUrl ? '✓' : '✗'}\n` +
     `VITE_SUPABASE_ANON_KEY: ${supabaseKey ? '✓' : '✗'}`
+  );
+}
+
+if (!supabaseKey.startsWith('eyJ')) {
+  console.error('Invalid API key format. The anon key should start with "eyJ"');
+  throw new Error(
+    'Invalid Supabase API key format. Please check your VITE_SUPABASE_ANON_KEY environment variable.\n' +
+    'Make sure you are using the anon public key from your Supabase project settings.'
   );
 }
 
