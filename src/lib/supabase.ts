@@ -5,14 +5,20 @@ import type { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-// Debug configuration
+// Debug configuration (without exposing full key)
 console.log('Supabase Configuration Check:', {
   url: supabaseUrl,
   keyLength: supabaseKey?.length || 0,
   keyPrefix: supabaseKey?.substring(0, 8),
-  mode: import.meta.env.MODE
+  mode: import.meta.env.MODE,
+  env: {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseKey,
+    fullUrl: supabaseUrl
+  }
 });
 
+// Validate configuration
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(
     'Missing Supabase configuration. Please check your environment variables:\n' +
@@ -21,11 +27,19 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
-if (!supabaseKey.startsWith('eyJ')) {
-  console.error('Invalid API key format. The anon key should start with "eyJ"');
+// Validate key format
+if (!supabaseKey.startsWith('eyJ') || supabaseKey.length < 160) {
+  console.error('Invalid API key format:', {
+    startsWithEyJ: supabaseKey.startsWith('eyJ'),
+    length: supabaseKey.length,
+    prefix: supabaseKey.substring(0, 8)
+  });
   throw new Error(
-    'Invalid Supabase API key format. Please check your VITE_SUPABASE_ANON_KEY environment variable.\n' +
-    'Make sure you are using the anon public key from your Supabase project settings.'
+    'Invalid Supabase API key format. The anon key should:\n' +
+    '1. Start with "eyJ"\n' +
+    '2. Be at least 160 characters long\n' +
+    'Please check your VITE_SUPABASE_ANON_KEY in Netlify environment variables.\n' +
+    'Make sure you are using the anon/public key from Project Settings > API.'
   );
 }
 
