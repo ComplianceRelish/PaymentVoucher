@@ -27,11 +27,7 @@ function App() {
 
     const {
       data: { subscription },
-<<<<<<< HEAD
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-=======
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
->>>>>>> origin/main
       setSession(session);
     });
 
@@ -44,13 +40,8 @@ function App() {
     setError(null);
 
     try {
-<<<<<<< HEAD
-      // Sign in with email and password
-      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-=======
       // First, try to sign in
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
->>>>>>> origin/main
         email,
         password,
       });
@@ -64,21 +55,12 @@ function App() {
         return;
       }
 
-<<<<<<< HEAD
-      // If sign in successful, get user profile
-      if (authData.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', authData.user.id)
-=======
       if (data.user) {
         // After successful sign in, get the user's profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
->>>>>>> origin/main
           .single();
 
         if (profileError) {
@@ -88,10 +70,6 @@ function App() {
           return;
         }
 
-<<<<<<< HEAD
-        // For non-admin users, verify role matches
-        if (selectedRole && profile?.role !== selectedRole && profile?.role !== 'admin') {
-=======
         // For admin users, allow login regardless of selected role
         if (profile?.role === 'admin') {
           return; // Allow login to proceed
@@ -99,7 +77,6 @@ function App() {
 
         // For non-admin users, verify role matches
         if (selectedRole && profile?.role !== selectedRole) {
->>>>>>> origin/main
           await supabase.auth.signOut();
           setError(`Access denied. You don't have ${selectedRole} privileges.`);
           return;
