@@ -6,6 +6,13 @@ import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { testSupabaseConnection } from './lib/supabaseTest';
 
+// Debug environment variables
+console.log('Environment check:', {
+  hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
+  hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+  env: import.meta.env.MODE
+});
+
 function App() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
