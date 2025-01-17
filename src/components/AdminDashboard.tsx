@@ -29,17 +29,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showUserForm, setShowUserForm] = useState(false);
   const [showAccountForm, setShowAccountForm] = useState(false);
 
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<Omit<User, 'id'>>({
     name: '',
     email: '',
     role: 'requester' as UserRole,
     active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   });
 
-  const [newAccountHead, setNewAccountHead] = useState({
+  const [newAccountHead, setNewAccountHead] = useState<Omit<AccountHead, 'id'>>({
     name: '',
     code: '',
     active: true,
+    description: '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   });
 
   const handleUserSubmit = (e: React.FormEvent) => {
@@ -50,7 +55,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } else {
       onAddUser(newUser);
     }
-    setNewUser({ name: '', email: '', role: 'requester', active: true });
+    setNewUser({ 
+      name: '', 
+      email: '', 
+      role: 'requester', 
+      active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
     setShowUserForm(false);
   };
 
@@ -62,7 +74,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } else {
       onAddAccountHead(newAccountHead);
     }
-    setNewAccountHead({ name: '', code: '', active: true });
+    setNewAccountHead({ 
+      name: '', 
+      code: '', 
+      active: true, 
+      description: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
     setShowAccountForm(false);
   };
 

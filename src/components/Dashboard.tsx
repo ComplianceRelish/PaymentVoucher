@@ -39,8 +39,10 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
       if (profiles) {
         setUsers(profiles.map(profile => ({
           id: profile.id,
+          name: profile.name || '',
           email: profile.email,
           role: profile.role,
+          active: profile.active || true,
           created_at: profile.created_at,
           updated_at: profile.updated_at
         })));
@@ -65,6 +67,8 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
           id: head.id,
           name: head.name,
           code: head.code,
+          active: head.active || true,
+          description: head.description,
           created_at: head.created_at,
           updated_at: head.updated_at
         })));
