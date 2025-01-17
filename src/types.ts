@@ -2,8 +2,10 @@ export type UserRole = 'admin' | 'requester' | 'approver';
 
 export interface User {
   id: string;
+  name: string;
   email: string;
   role: UserRole;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -11,6 +13,8 @@ export interface User {
 export interface AccountHead {
   id: string;
   name: string;
+  code: string;
+  active: boolean;
   description?: string;
   created_at: string;
   updated_at: string;
