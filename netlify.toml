@@ -1,0 +1,39 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[dev]
+  command = "npm run dev"
+  port = 5173
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Custom domain configuration
+[context.production]
+  environment = { NODE_VERSION = "18" }
+
+# Force HTTPS
+[[redirects]]
+  from = "http://*"
+  to = "https://:splat"
+  status = 301
+  force = true
+
+# WWW to non-WWW redirect
+[[redirects]]
+  from = "https://www.foodstream.in/*"
+  to = "https://foodstream.in/:splat"
+  status = 301
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+  X-Frame-Options = "DENY"
+  X-XSS-Protection = "1; mode=block"
+  X-Content-Type-Options = "nosniff"
+  Referrer-Policy = "strict-origin-when-cross-origin"
+  Strict-Transport-Security = "max-age=31536000; includeSubDomains"
