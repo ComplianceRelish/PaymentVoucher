@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PaymentVoucher, UserRole, User, AccountHead } from '../types';
 import PaymentList from './PaymentList';
 import NewPaymentForm from './NewPaymentForm';
@@ -21,13 +21,7 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUserProfile();
-    fetchAccountHeads();
-    fetchVouchers();
-  }, [session.user.id]); // Re-fetch when user ID changes
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
@@ -50,9 +44,9 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
-  };
+  }, [session.user.id]);
 
-  const fetchAccountHeads = async () => {
+  const fetchAccountHeads = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('account_heads')
@@ -76,9 +70,9 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
     } catch (error) {
       console.error('Error fetching account heads:', error);
     }
-  };
+  }, []);
 
-  const fetchVouchers = async () => {
+  const fetchVouchers = useCallback(async () => {
     try {
       let query = supabase
         .from('payment_vouchers')
@@ -86,7 +80,6 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         .eq('status', activeTab)
         .order('created_at', { ascending: false });
 
-      // Filter vouchers based on user role
       if (role === 'requester') {
         query = query.eq('requested_by', session.user.id);
       }
@@ -111,18 +104,24 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
           approvedDate: voucher.approved_date,
           rejectedBy: voucher.rejected_by,
           rejectedDate: voucher.rejected_date,
-          requester_id: voucher.requested_by,
+          requester_id: voucher.requester_id,
           created_at: voucher.created_at,
           updated_at: voucher.updated_at
         }));
         setVouchers(formattedVouchers);
       }
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching vouchers:', error);
+    } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, role, session.user.id]);
+
+  useEffect(() => {
+    fetchUserProfile();
+    fetchAccountHeads();
+    fetchVouchers();
+  }, [fetchUserProfile, fetchAccountHeads, fetchVouchers]);
 
   const handleNewPayment = async (payment: {
     payee: string;

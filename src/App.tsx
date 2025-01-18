@@ -134,9 +134,13 @@ function App() {
         throw new Error(`Access denied. You don't have ${selectedRole} privileges.`);
       }
 
-    } catch (error: any) {
-      setError(error.message || 'An unexpected error occurred');
-      if (error.message !== 'Access denied.') {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 
+                         typeof error === 'object' && error && 'message' in error ? 
+                         (error.message as string) : 'An unexpected error occurred';
+      
+      setError(errorMessage);
+      if (errorMessage !== 'Access denied.') {
         console.error('Login error:', error);
       }
     } finally {
