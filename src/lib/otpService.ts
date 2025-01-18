@@ -1,61 +1,56 @@
-interface OTPNotification {
-  message: string;
-  type: 'otp';
-  otp: string;
-  duration?: number;
-}
+// Store OTPs with their creation time
+const otpStore = new Map<string, { otp: string; createdAt: number }>();
 
-interface OTPServiceResult {
-  success: boolean;
-  error?: string;
-}
-
-interface OTPService {
-  sendOTP: (mobile: string) => Promise<OTPServiceResult>;
-  verifyOTP: (mobile: string, otp: string) => boolean;
-}
-
-// In-memory OTP storage (replace with Redis or database in production)
-const otpStore = new Map<string, { otp: string; expiry: number }>();
-
-// Generate a 6-digit OTP
-const generateOTP = (): string => {
+export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Store OTP with 5-minute expiry
-const storeOTP = (mobile: string, otp: string): void => {
-  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-  otpStore.set(mobile, { otp, expiry });
+export const storeOTP = (identifier: string, otp: string) => {
+  otpStore.set(identifier, {
+    otp,
+    createdAt: Date.now(),
+  });
 };
 
-// Verify OTP
-const verifyOTP = (mobile: string, otp: string): boolean => {
-  const storedData = otpStore.get(mobile);
+export const verifyOTP = (identifier: string, userOTP: string): boolean => {
+  const storedData = otpStore.get(identifier);
   if (!storedData) return false;
-  
-  const { otp: storedOTP, expiry } = storedData;
-  if (Date.now() > expiry) {
-    otpStore.delete(mobile);
+
+  const { otp, createdAt } = storedData;
+  const now = Date.now();
+  const validityPeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  if (now - createdAt > validityPeriod) {
+    otpStore.delete(identifier);
     return false;
   }
-  
-  if (otp === storedOTP) {
-    otpStore.delete(mobile);
+
+  if (otp === userOTP) {
+    otpStore.delete(identifier);
     return true;
   }
-  
+
   return false;
 };
 
-// Send OTP via in-app notification
-const createOTPService = (addNotification: (notification: OTPNotification) => void): OTPService => {
-  const sendOTP = async (mobile: string): Promise<OTPServiceResult> => {
+// Create OTP service
+interface Notification {
+  message: string;
+  type: string;
+  otp: string;
+  duration: number;
+}
+
+interface OTPService {
+  sendOTP: (identifier: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOTP: (identifier: string, userOTP: string) => boolean;
+}
+
+const createOTPService = (addNotification: (notification: Notification) => void): OTPService => {
+  const sendOTP = async (identifier: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const otp = generateOTP();
-      
-      // Store OTP
-      storeOTP(mobile, otp);
+      storeOTP(identifier, otp);
       
       // Show OTP in notification
       addNotification({
@@ -69,8 +64,8 @@ const createOTPService = (addNotification: (notification: OTPNotification) => vo
     } catch (error) {
       console.error('Error sending OTP:', error);
       return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to send OTP' 
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send OTP'
       };
     }
   };
@@ -81,4 +76,4 @@ const createOTPService = (addNotification: (notification: OTPNotification) => vo
   };
 };
 
-export { createOTPService, type OTPService, type OTPNotification };
+export default createOTPService;

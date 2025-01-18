@@ -31,7 +31,7 @@ jobs:
       - name: Create env file
         run: |
           cat << EOF > .env
-          VITE_SUPABASE_URL=https://usdlagyqeaveevj1ncjk.supabase.co
+          VITE_SUPABASE_URL=https://bvmzjtwvwmjksrjnjbry.supabase.co
           VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
           EOF
 
@@ -40,7 +40,7 @@ jobs:
       
       - name: Build
         env:
-          VITE_SUPABASE_URL: https://usdlagyqeaveevj1ncjk.supabase.co
+          VITE_SUPABASE_URL: https://bvmzjtwvwmjksrjnjbry.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
@@ -59,4 +59,4 @@ jobs:
           enable-pull-request-comment: true
           enable-commit-comment: true
           overwrites-pull-request-comment: true
-        timeout-minutes: 1
+        timeout-minutes: 5

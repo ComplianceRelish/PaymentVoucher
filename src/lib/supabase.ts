@@ -48,11 +48,19 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storageKey: 'payment-voucher-auth',
+    storage: window.localStorage,
+    flowType: 'pkce'
   },
   global: {
     headers: {
       'x-application-name': 'payment-voucher'
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 });

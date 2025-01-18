@@ -1,23 +1,14 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-import ErrorBoundary from './components/ErrorBoundary';
-import './index.css';
-import { NotificationProvider } from './context/NotificationContext';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+import { NotificationProvider } from './context/NotificationContext'
+import './lib/envTest'
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Failed to find the root element');
-}
-
-const root = createRoot(rootElement);
-
-root.render(
-  <StrictMode>
-    <ErrorBoundary>
-      <NotificationProvider>
-        <App />
-      </NotificationProvider>
-    </ErrorBoundary>
-  </StrictMode>
-);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <NotificationProvider>
+      <App />
+    </NotificationProvider>
+  </React.StrictMode>,
+)

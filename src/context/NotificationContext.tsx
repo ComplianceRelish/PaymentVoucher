@@ -1,16 +1,14 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { OTPNotification } from '../lib/otpService';
+import React, { createContext, useState, useCallback } from 'react';
+import { NOTIFICATION_TIMEOUT } from './notificationConstants';
 
 type NotificationType = 'info' | 'success' | 'error' | 'otp';
 
-interface BaseNotification {
+interface Notification {
   id: string;
   message: string;
   type: NotificationType;
   duration?: number;
 }
-
-type Notification = BaseNotification | (BaseNotification & OTPNotification);
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -18,7 +16,7 @@ interface NotificationContextType {
   removeNotification: (id: string) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -29,26 +27,38 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
     const id = Math.random().toString(36).substring(7);
-    const duration = notification.duration || (notification.type === 'otp' ? 30000 : 5000);
+    const duration = notification.duration || (notification.type === 'otp' ? 30000 : NOTIFICATION_TIMEOUT);
 
     setNotifications(prev => [...prev, { ...notification, id }]);
 
-    setTimeout(() => {
-      removeNotification(id);
-    }, duration);
+    if (duration) {
+      setTimeout(() => {
+        removeNotification(id);
+      }, duration);
+    }
   }, [removeNotification]);
 
   return (
     <NotificationContext.Provider value={{ notifications, addNotification, removeNotification }}>
       {children}
+      <div className="fixed top-4 right-4 z-50">
+        {notifications.map(notification => (
+          <div
+            key={notification.id}
+            className={`mb-4 p-4 rounded shadow-lg transition-all transform ${
+              notification.type === 'success'
+                ? 'bg-green-500'
+                : notification.type === 'error'
+                ? 'bg-red-500'
+                : notification.type === 'otp'
+                ? 'bg-purple-500'
+                : 'bg-blue-500'
+            } text-white`}
+          >
+            {notification.message}
+          </div>
+        ))}
+      </div>
     </NotificationContext.Provider>
   );
-};
-
-export const useNotification = () => {
-  const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
 };
