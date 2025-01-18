@@ -13,6 +13,17 @@ interface DashboardProps {
   onLogout: () => Promise<void>;
 }
 
+interface ProfileData {
+  id: string;
+  name: string | null;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  mobile?: string;
+}
+
 function Dashboard({ session, role, onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -31,15 +42,17 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
       if (error) throw error;
 
       if (profiles) {
-        setUsers(profiles.map(profile => ({
+        const formattedUsers: User[] = profiles.map((profile: ProfileData) => ({
           id: profile.id,
           name: profile.name || '',
           email: profile.email,
           role: profile.role,
-          active: profile.active || true,
+          active: profile.active,
           created_at: profile.created_at,
-          updated_at: profile.updated_at
-        })));
+          updated_at: profile.updated_at,
+          mobile: profile.mobile || ''
+        }));
+        setUsers(formattedUsers);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);

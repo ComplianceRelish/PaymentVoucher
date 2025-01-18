@@ -14,9 +14,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
+    environment: production
     
     steps:
       - uses: actions/checkout@v4
@@ -31,19 +29,19 @@ jobs:
         run: npm install
 
       - name: Create env file
-        shell: bash
-        env:
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           cat << EOF > .env
-          VITE_SUPABASE_URL="https://usdlagyqeaveevj1ncjk.supabase.co"
-          VITE_SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+          VITE_SUPABASE_URL=https://usdlagyqeaveevj1ncjk.supabase.co
+          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
           EOF
 
       - name: Lint
         run: npm run lint
       
       - name: Build
+        env:
+          VITE_SUPABASE_URL: https://usdlagyqeaveevj1ncjk.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Deploy to Netlify
