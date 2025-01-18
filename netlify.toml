@@ -1,19 +1,13 @@
 [build]
-  command = "npm run build"
   publish = "dist"
 
-[dev]
-  command = "npm run dev"
-  port = 5173
+[context.production]
+  environment = { NODE_VERSION = "18" }
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Production configuration
-[context.production]
-  environment = { NODE_VERSION = "18" }
 
 # Force HTTPS
 [[redirects]]
