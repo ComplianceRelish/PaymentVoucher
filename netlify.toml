@@ -12,10 +12,8 @@
   status = 200
 
 # Production configuration
-[context.production.environment]
-  NODE_VERSION = "18"
-  VITE_SUPABASE_URL = "$VITE_SUPABASE_URL"
-  VITE_SUPABASE_ANON_KEY = "$VITE_SUPABASE_ANON_KEY"
+[context.production]
+  environment = { NODE_VERSION = "18" }
 
 # Force HTTPS
 [[redirects]]
@@ -23,19 +21,3 @@
   to = "https://:splat"
   status = 301
   force = true
-
-# WWW to non-WWW redirect
-[[redirects]]
-  from = "https://www.foodstream.in/*"
-  to = "https://foodstream.in/:splat"
-  status = 301
-  force = true
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-  X-Frame-Options = "DENY"
-  X-XSS-Protection = "1; mode=block"
-  X-Content-Type-Options = "nosniff"
-  Referrer-Policy = "strict-origin-when-cross-origin"
-  Strict-Transport-Security = "max-age=31536000; includeSubDomains"
