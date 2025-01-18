@@ -89,7 +89,11 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
     try {
       let query = supabase
         .from('payment_vouchers')
-        .select('*, profiles(name), account_heads(name)')
+        .select(`
+          *,
+          requested_by_profile:requested_by(name),
+          account_head:account_head_id(name)
+        `)
         .eq('status', activeTab)
         .order('created_at', { ascending: false });
 
