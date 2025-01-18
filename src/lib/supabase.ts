@@ -56,3 +56,66 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     }
   }
 });
+
+// User management functions
+export const createUser = async (userData: { 
+  name: string; 
+  email: string; 
+  mobile: string;
+  role: string; 
+  active: boolean;
+  otp: string;
+}) => {
+  try {
+    // 1. Create profile first (we'll use mobile number as the primary authentication)
+    const { error: profileError, data: profile } = await supabase.from('profiles').insert([{
+      name: userData.name,
+      email: userData.email,
+      mobile: userData.mobile,
+      role: userData.role,
+      active: userData.active,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }]).select().single();
+
+    if (profileError) throw profileError;
+    if (!profile) throw new Error('Failed to create profile');
+
+    return { profile };
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+};
+
+export const updateUser = async (userId: string, userData: { 
+  name?: string; 
+  email?: string;
+  mobile?: string;
+  role?: string; 
+  active?: boolean 
+}) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      ...userData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', userId);
+
+  if (error) throw error;
+};
+
+export const deleteUser = async (userId: string) => {
+  try {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileError) throw profileError;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};

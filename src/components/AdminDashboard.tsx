@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { User, AccountHead, UserRole } from '../types';
 import { Users, BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
+import { createUser, updateUser, deleteUser } from '../lib/supabase';
+import { createOTPService } from '../lib/otpService';
+import { useNotification } from '../context/NotificationContext';
 
 interface AdminDashboardProps {
   users: User[];
@@ -23,6 +26,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateAccountHead,
   onDeleteAccountHead,
 }) => {
+  const { addNotification } = useNotification();
+  const otpService = createOTPService(addNotification);
+
   const [activeTab, setActiveTab] = useState<'users' | 'accounts'>('users');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingAccountHead, setEditingAccountHead] = useState<AccountHead | null>(null);
@@ -32,6 +38,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newUser, setNewUser] = useState<Omit<User, 'id'>>({
     name: '',
     email: '',
+    mobile: '',
     role: 'requester' as UserRole,
     active: true,
     created_at: new Date().toISOString(),
@@ -47,23 +54,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     updated_at: new Date().toISOString()
   });
 
-  const handleUserSubmit = (e: React.FormEvent) => {
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [otp, setOTP] = useState('');
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      onUpdateUser({ ...editingUser, ...newUser });
-      setEditingUser(null);
-    } else {
-      onAddUser(newUser);
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, newUser);
+        onUpdateUser({ ...editingUser, ...newUser });
+        setEditingUser(null);
+      } else {
+        if (!showOTPVerification) {
+          // First step: Send OTP
+          const { success, error } = await otpService.sendOTP(newUser.mobile);
+          if (!success) throw new Error(error);
+          setShowOTPVerification(true);
+          return;
+        }
+
+        // Second step: Verify OTP and create user
+        const isValid = otpService.verifyOTP(newUser.mobile, otp);
+        if (!isValid) {
+          throw new Error('Invalid OTP. Please try again.');
+        }
+
+        // Create user after OTP verification
+        const { profile } = await createUser({
+          ...newUser,
+          otp
+        });
+
+        onAddUser({ ...profile });
+        setShowOTPVerification(false);
+        setOTP('');
+      }
+
+      setNewUser({ 
+        name: '', 
+        email: '', 
+        mobile: '',
+        role: 'requester', 
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      setShowUserForm(false);
+    } catch (error) {
+      console.error('Error managing user:', error);
+      alert(error instanceof Error ? error.message : 'Failed to manage user');
     }
-    setNewUser({ 
-      name: '', 
-      email: '', 
-      role: 'requester', 
-      active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-    setShowUserForm(false);
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    try {
+      await deleteUser(id);
+      onDeleteUser(id);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete user');
+    }
   };
 
   const handleAccountSubmit = (e: React.FormEvent) => {
@@ -126,64 +176,102 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           {showUserForm && (
-            <form onSubmit={handleUserSubmit} className="bg-white p-4 rounded-lg shadow space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  required
-                />
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 className="text-lg font-medium mb-4">
+                  {editingUser ? 'Edit User' : 'Add New User'}
+                </h3>
+                <form onSubmit={handleUserSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      value={newUser.name}
+                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Mobile</label>
+                    <input
+                      type="tel"
+                      value={newUser.mobile}
+                      onChange={(e) => setNewUser({ ...newUser, mobile: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
+                      pattern="[0-9]{10}"
+                      title="Please enter a valid 10-digit mobile number"
+                    />
+                  </div>
+                  {showOTPVerification && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Enter OTP</label>
+                      <input
+                        type="text"
+                        value={otp}
+                        onChange={(e) => setOTP(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        required
+                        pattern="[0-9]{6}"
+                        title="Please enter the 6-digit OTP"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <select
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="requester">Requester</option>
+                      <option value="approver">Approver</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newUser.active}
+                      onChange={(e) => setNewUser({ ...newUser, active: e.target.checked })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-900">Active</label>
+                  </div>
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserForm(false);
+                        setShowOTPVerification(false);
+                        setOTP('');
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                    >
+                      {showOTPVerification ? 'Verify OTP' : editingUser ? 'Update' : 'Send OTP'}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="requester">Requester</option>
-                  <option value="approver">Approver</option>
-                </select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={newUser.active}
-                  onChange={(e) => setNewUser({ ...newUser, active: e.target.checked })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label className="text-sm text-gray-700">Active</label>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowUserForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  {editingUser ? 'Update' : 'Add'} User
-                </button>
-              </div>
-            </form>
+            </div>
           )}
 
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -236,7 +324,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => onDeleteUser(user.id)}
+                        onClick={() => handleDeleteUser(user.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 className="w-4 h-4" />
