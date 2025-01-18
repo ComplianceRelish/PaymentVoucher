@@ -2,10 +2,17 @@ import React from 'react';
 import { useNotification } from '../context/NotificationContext';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
+interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'otp' | 'info';
+  message: string;
+  otp?: string;
+}
+
 const NotificationToast: React.FC = () => {
   const { notifications, removeNotification } = useNotification();
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: Notification['type']) => {
     switch (type) {
       case 'success':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
@@ -18,7 +25,7 @@ const NotificationToast: React.FC = () => {
     }
   };
 
-  const getBackgroundColor = (type: string) => {
+  const getBackgroundColor = (type: Notification['type']) => {
     switch (type) {
       case 'success':
         return 'bg-green-50 border-green-200';
@@ -31,13 +38,13 @@ const NotificationToast: React.FC = () => {
     }
   };
 
-  const isOTPNotification = (notification: any): notification is { type: 'otp'; otp: string } => {
+  const isOTPNotification = (notification: Notification): notification is Notification & { type: 'otp'; otp: string } => {
     return notification.type === 'otp' && 'otp' in notification;
   };
 
   return (
     <div className="fixed top-4 right-4 z-50 space-y-4">
-      {notifications.map((notification) => (
+      {notifications.map((notification: Notification) => (
         <div
           key={notification.id}
           className={`flex items-center p-4 rounded-lg shadow-lg border ${getBackgroundColor(
