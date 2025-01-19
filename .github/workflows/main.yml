@@ -14,7 +14,9 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: 
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
     
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +29,21 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Check Required Secrets
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
+            echo "Error: VITE_SUPABASE_ANON_KEY is not set in repository secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NETLIFY_AUTH_TOKEN }}" ]; then
+            echo "Error: NETLIFY_AUTH_TOKEN is not set in repository secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.NETLIFY_SITE_ID }}" ]; then
+            echo "Error: NETLIFY_SITE_ID is not set in repository secrets"
+            exit 1
+          fi
 
       - name: Create env file
         run: |
