@@ -8,8 +8,8 @@ interface AdminDashboardProps {
   users: User[];
   accountHeads: AccountHead[];
   onAddUser: (user: Omit<User, 'id'>) => Promise<void>;
-  onDeleteUser: (id: string) => void;
-  onDeleteAccountHead: (id: string) => void;
+  onDeleteUser: (id: string) => Promise<void>;
+  onDeleteAccountHead: (id: string) => Promise<void>;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -25,19 +25,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      onDeleteUser(userId);
-      addNotification('User deleted successfully', 'success');
+      await onDeleteUser(userId);
+      addNotification({
+        message: 'User deleted successfully',
+        type: 'success'
+      });
     } catch (error) {
-      addNotification('Failed to delete user', 'error');
+      addNotification({
+        message: 'Failed to delete user',
+        type: 'error'
+      });
     }
   };
 
   const handleDeleteAccountHead = async (accountHeadId: string) => {
     try {
-      onDeleteAccountHead(accountHeadId);
-      addNotification('Account head deleted successfully', 'success');
+      await onDeleteAccountHead(accountHeadId);
+      addNotification({
+        message: 'Account head deleted successfully',
+        type: 'success'
+      });
     } catch (error) {
-      addNotification('Failed to delete account head', 'error');
+      addNotification({
+        message: 'Failed to delete account head',
+        type: 'error'
+      });
     }
   };
 
@@ -152,7 +164,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
+                    Code
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -166,7 +178,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {accountHead.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {accountHead.description}
+                      {accountHead.code}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button

@@ -10,35 +10,47 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
   const { addNotification } = useNotification();
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     mobile: '',
     password: '',
-    role: 'USER' as UserRole
+    role: 'requester' as UserRole,
+    active: true
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const newUser: Omit<User, 'id'> = {
-        ...formData,
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        mobile: formData.mobile,
+        role: formData.role,
+        active: formData.active
       };
       
       await onAddUser(newUser);
-      addNotification('User added successfully', 'success');
+      addNotification({ 
+        message: 'User added successfully',
+        type: 'success'
+      });
       
       // Reset form
       setFormData({
         name: '',
+        username: '',
         email: '',
         mobile: '',
         password: '',
-        role: 'USER' as UserRole
+        role: 'requester',
+        active: true
       });
     } catch (error) {
-      addNotification('Failed to add user', 'error');
+      addNotification({
+        message: 'Failed to add user',
+        type: 'error'
+      });
     }
   };
 
@@ -51,6 +63,18 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          required
+        />
+      </div>
+
+      <div>
+        <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+        <input
+          type="text"
+          id="username"
+          value={formData.username}
+          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           required
         />
@@ -100,8 +124,9 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
           onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         >
-          <option value="USER">User</option>
-          <option value="ADMIN">Admin</option>
+          <option value="requester">Requester</option>
+          <option value="approver">Approver</option>
+          <option value="admin">Admin</option>
         </select>
       </div>
       
@@ -110,10 +135,12 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
           type="button"
           onClick={() => setFormData({
             name: '',
+            username: '',
             email: '',
             mobile: '',
             password: '',
-            role: 'USER' as UserRole
+            role: 'requester',
+            active: true
           })}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
         >
