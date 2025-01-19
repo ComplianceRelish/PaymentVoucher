@@ -2,10 +2,9 @@ import React, { createContext, useState, useCallback } from 'react';
 
 const NOTIFICATION_TIMEOUT = 5000; // 5 seconds
 
-type NotificationType = 'info' | 'success' | 'error';
+export type NotificationType = 'info' | 'success' | 'error';
 
-interface Notification {
-  id: string;
+export interface Notification {
   message: string;
   type: NotificationType;
   duration?: number;
@@ -13,8 +12,8 @@ interface Notification {
 
 interface NotificationContextType {
   notifications: Notification[];
-  addNotification: (notification: Omit<Notification, 'id'>) => void;
-  removeNotification: (id: string) => void;
+  addNotification: (notification: Notification) => void;
+  removeNotification: (index: number) => void;
 }
 
 export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -22,30 +21,26 @@ export const NotificationContext = createContext<NotificationContextType | undef
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  const removeNotification = useCallback((index: number) => {
+    setNotifications(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
-    const id = Math.random().toString(36).substring(7);
-    const duration = notification.duration || NOTIFICATION_TIMEOUT;
+  const addNotification = useCallback((notification: Notification) => {
+    setNotifications(prev => [...prev, notification]);
 
-    setNotifications(prev => [...prev, { ...notification, id }]);
-
-    if (duration) {
-      setTimeout(() => {
-        removeNotification(id);
-      }, duration);
-    }
-  }, [removeNotification]);
+    const timeout = notification.duration || NOTIFICATION_TIMEOUT;
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n !== notification));
+    }, timeout);
+  }, []);
 
   return (
     <NotificationContext.Provider value={{ notifications, addNotification, removeNotification }}>
       {children}
       <div className="fixed top-4 right-4 z-50">
-        {notifications.map(notification => (
+        {notifications.map((notification, index) => (
           <div
-            key={notification.id}
+            key={index}
             className={`mb-4 p-4 rounded shadow-lg transition-all transform ${
               notification.type === 'success'
                 ? 'bg-green-500'
