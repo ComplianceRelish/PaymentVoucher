@@ -1,7 +1,8 @@
 import React, { createContext, useState, useCallback } from 'react';
-import { NOTIFICATION_TIMEOUT } from './notificationConstants';
 
-type NotificationType = 'info' | 'success' | 'error' | 'otp';
+const NOTIFICATION_TIMEOUT = 5000; // 5 seconds
+
+type NotificationType = 'info' | 'success' | 'error';
 
 interface Notification {
   id: string;
@@ -27,7 +28,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
     const id = Math.random().toString(36).substring(7);
-    const duration = notification.duration || (notification.type === 'otp' ? 30000 : NOTIFICATION_TIMEOUT);
+    const duration = notification.duration || NOTIFICATION_TIMEOUT;
 
     setNotifications(prev => [...prev, { ...notification, id }]);
 
@@ -50,8 +51,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 ? 'bg-green-500'
                 : notification.type === 'error'
                 ? 'bg-red-500'
-                : notification.type === 'otp'
-                ? 'bg-purple-500'
                 : 'bg-blue-500'
             } text-white`}
           >

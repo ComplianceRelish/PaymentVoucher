@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNotification } from '../context/NotificationContext';
-import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { CheckCircle, XCircle, Info, X } from 'lucide-react';
 
 interface Notification {
   id: string;
-  type: 'success' | 'error' | 'otp' | 'info';
+  type: 'success' | 'error' | 'info';
   message: string;
 }
 
@@ -16,9 +16,7 @@ const NotificationToast: React.FC = () => {
       case 'success':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
-      case 'otp':
-        return <Info className="w-5 h-5 text-purple-500" />;
+        return <XCircle className="w-5 h-5 text-red-500" />;
       default:
         return <Info className="w-5 h-5 text-blue-500" />;
     }
@@ -30,8 +28,6 @@ const NotificationToast: React.FC = () => {
         return 'bg-green-50 border-green-200';
       case 'error':
         return 'bg-red-50 border-red-200';
-      case 'otp':
-        return 'bg-purple-50 border-purple-200';
       default:
         return 'bg-blue-50 border-blue-200';
     }
