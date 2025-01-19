@@ -66,28 +66,39 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
 });
 
 // User management functions
-export const createUser = async (userData: { 
-  name: string; 
-  email: string; 
-  mobile: string;
-  role: string; 
-  active: boolean;
-  otp: string;
+export const createUser = async (userData: {
+  email: string;
+  password: string;
+  name: string;
+  phone_number: string;
+  role: 'admin' | 'requester' | 'approver';
 }) => {
   try {
-    // 1. Create profile first (we'll use mobile number as the primary authentication)
-    const { error: profileError, data: profile } = await supabase.from('profiles').insert([{
-      name: userData.name,
+    // First create the auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: userData.email,
-      mobile: userData.mobile,
-      role: userData.role,
-      active: userData.active,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }]).select().single();
+      password: userData.password,
+    });
+
+    if (authError) throw authError;
+
+    // Then create the profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user!.id,
+        email: userData.email,
+        name: userData.name,
+        phone_number: userData.phone_number,
+        role: userData.role,
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
     if (profileError) throw profileError;
-    if (!profile) throw new Error('Failed to create profile');
 
     return { profile };
   } catch (error) {
@@ -96,7 +107,7 @@ export const createUser = async (userData: {
   }
 };
 
-export const updateUser = async (userId: string, userData: { 
+export const updateUser = async (id: string, userData: { 
   name?: string; 
   email?: string;
   mobile?: string;
@@ -109,7 +120,7 @@ export const updateUser = async (userId: string, userData: {
       ...userData,
       updated_at: new Date().toISOString()
     })
-    .eq('id', userId);
+    .eq('id', id);
 
   if (error) throw error;
 };

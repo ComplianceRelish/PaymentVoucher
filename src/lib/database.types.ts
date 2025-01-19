@@ -14,6 +14,8 @@ export interface Database {
           id: string
           name: string
           email: string
+          phone_number: string
+          password: string
           role: 'admin' | 'requester' | 'approver'
           active: boolean
           created_at: string
@@ -23,6 +25,8 @@ export interface Database {
           id: string
           name: string
           email: string
+          phone_number: string
+          password: string
           role?: 'admin' | 'requester' | 'approver'
           active?: boolean
           created_at?: string
@@ -32,6 +36,8 @@ export interface Database {
           id?: string
           name?: string
           email?: string
+          phone_number?: string
+          password?: string
           role?: 'admin' | 'requester' | 'approver'
           active?: boolean
           created_at?: string
