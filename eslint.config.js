@@ -1,20 +1,29 @@
 import js from '@eslint/js';
-import * as tsParser from '@typescript-eslint/parser';
-import * as tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 
+/** @type {Array<import('eslint').Linter.FlatConfig>} */
 export default [
+  // Base config for all JavaScript files
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
-    ...js.configs.recommended,
-    ignores: ['dist/**', 'node_modules/**', 'build/**']
+    ignores: ['dist/**', 'node_modules/**', 'build/**'],
+    linterOptions: {
+      reportUnusedDisableDirectives: true,
+    },
+    rules: {
+      'no-console': 'warn',
+      'no-debugger': 'warn'
+    }
   },
+  // TypeScript specific config
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         project: './tsconfig.json',
-        ecmaVersion: 2022,
+        ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: {
           jsx: true
@@ -25,14 +34,11 @@ export default [
       '@typescript-eslint': tsPlugin
     },
     rules: {
-      ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-empty-function': 'warn',
-      'no-console': 'warn',
-      'no-debugger': 'warn'
+      '@typescript-eslint/no-empty-function': 'warn'
     }
   }
 ];
