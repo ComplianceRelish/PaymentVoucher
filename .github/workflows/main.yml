@@ -33,18 +33,37 @@ jobs:
 
       - name: Check Required Secrets
         run: |
+          echo "Checking required secrets..."
+          MISSING_SECRETS=""
+          
           if [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ]; then
-            echo "Error: VITE_SUPABASE_ANON_KEY is not set in repository secrets"
-            exit 1
+            MISSING_SECRETS="$MISSING_SECRETS\n- VITE_SUPABASE_ANON_KEY"
+          else
+            echo " VITE_SUPABASE_ANON_KEY is set"
           fi
+          
           if [ -z "${{ secrets.NETLIFY_AUTH_TOKEN }}" ]; then
-            echo "Error: NETLIFY_AUTH_TOKEN is not set in repository secrets"
-            exit 1
+            MISSING_SECRETS="$MISSING_SECRETS\n- NETLIFY_AUTH_TOKEN"
+          else
+            echo " NETLIFY_AUTH_TOKEN is set"
           fi
+          
           if [ -z "${{ secrets.NETLIFY_SITE_ID }}" ]; then
-            echo "Error: NETLIFY_SITE_ID is not set in repository secrets"
+            MISSING_SECRETS="$MISSING_SECRETS\n- NETLIFY_SITE_ID"
+          else
+            echo " NETLIFY_SITE_ID is set"
+          fi
+          
+          if [ ! -z "$MISSING_SECRETS" ]; then
+            echo -e "\n Error: The following secrets are missing:$MISSING_SECRETS"
+            echo -e "\nPlease add these secrets in your GitHub repository:"
+            echo "1. Go to Settings > Environments"
+            echo "2. Select or create 'production' environment"
+            echo "3. Add the missing secrets"
             exit 1
           fi
+          
+          echo " All required secrets are properly configured!"
 
       - name: Create env file
         run: |
