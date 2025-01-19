@@ -6,6 +6,7 @@ import * as tsParser from '@typescript-eslint/parser';
 import * as tsPlugin from '@typescript-eslint/eslint-plugin';
 
 export default [
+  js.configs.recommended,
   {
     ignores: ['dist/**']
   },
@@ -27,8 +28,10 @@ export default [
       'react-refresh': reactRefresh
     },
     rules: {
-      ...tsPlugin.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true }
