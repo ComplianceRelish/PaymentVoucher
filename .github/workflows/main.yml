@@ -14,6 +14,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: 
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -76,4 +77,3 @@ jobs:
           enable-pull-request-comment: true
           enable-commit-comment: true
           overwrites-pull-request-comment: true
-        timeout-minutes: 5
