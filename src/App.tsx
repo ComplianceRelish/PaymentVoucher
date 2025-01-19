@@ -1,140 +1,133 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
-import { testSupabaseConnection } from './lib/supabaseTest';
 import NotificationToast from './components/NotificationToast';
-
-// Debug environment variables
-console.log('Environment check:', {
-  hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
-  hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-  env: import.meta.env.MODE,
-  fullUrl: import.meta.env.VITE_SUPABASE_URL
-});
+import { NotificationContext } from './context/NotificationContext';
 
 function App() {
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(() => {
-    try {
-      const saved = localStorage.getItem('selectedRole');
-      return saved ? JSON.parse(saved) as UserRole : null;
-    } catch {
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const { notifications, removeNotification, addNotification } = useContext(NotificationContext) || {
+    notifications: [],
+    removeNotification: () => {},
+    addNotification: () => {}
+  };
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
-        // Test Supabase connection
-        const isConnected = await testSupabaseConnection();
-        console.log('Supabase connection test result:', isConnected);
-        
-        if (!isConnected) {
-          throw new Error('Failed to connect to Supabase');
-        }
-
-        // Get initial session
         const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw sessionError;
-        }
         
-        console.log('Session status:', initialSession ? 'Active' : 'No session');
+        if (sessionError) {
+          addNotification({
+            type: 'error',
+            message: 'Failed to get session: ' + sessionError.message
+          });
+          return;
+        }
+
         setSession(initialSession);
 
-        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-          console.log('Auth state changed:', _event, session ? 'Has session' : 'No session');
-          if (!session) {
-            // Clear role when logged out
-            localStorage.removeItem('selectedRole');
-            setSelectedRole(null);
-          }
           setSession(session);
         });
 
-        return () => {
-          subscription.unsubscribe();
-        };
+        return () => subscription.unsubscribe();
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        setError(error instanceof Error ? error.message : 'Failed to initialize authentication');
-      } finally {
-        setLoading(false);
+        addNotification({
+          type: 'error',
+          message: 'Failed to initialize authentication'
+        });
       }
     };
 
     initializeAuth();
-  }, []);
+  }, [addNotification]);
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (session?.user) {
+        try {
+          const { data: userRoles, error } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (error) {
+            addNotification({
+              type: 'error',
+              message: 'Failed to fetch user role'
+            });
+            return;
+          }
+
+          if (userRoles?.role) {
+            setSelectedRole(userRoles.role as UserRole);
+          } else {
+            const { data: adminData, error: adminError } = await supabase
+              .from('admins')
+              .select('id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (adminError) {
+              addNotification({
+                type: 'error',
+                message: 'Failed to check admin status'
+              });
+              return;
+            }
+
+            if (adminData) {
+              setSelectedRole('admin');
+            }
+          }
+        } catch (error) {
+          addNotification({
+            type: 'error',
+            message: 'Failed to check user role'
+          });
+        }
+      }
+    };
+
+    checkUserRole();
+  }, [session, addNotification]);
 
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      setSession(null);
       setSelectedRole(null);
-      localStorage.removeItem('selectedRole');
     } catch (error) {
-      console.error('Logout error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to logout');
+      addNotification({
+        type: 'error',
+        message: 'Failed to log out'
+      });
     }
   };
 
   const renderContent = () => {
-    if (loading) {
+    if (!session) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-            <p className="text-gray-700 mb-4">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (!session || !session.user) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Welcome to Payment Voucher System</h1>
-            <p className="text-gray-600 mb-4">Please sign in using Supabase Authentication.</p>
-            <button
-              onClick={() => supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                  redirectTo: window.location.origin
-                }
-              })}
-              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
-            >
-              Sign in with Google
-            </button>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Sign in to your account
+              </h2>
+            </div>
+            <div className="mt-8 space-y-6">
+              <button
+                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Sign in with Google
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -142,28 +135,15 @@ function App() {
 
     if (!selectedRole) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Select Your Role</h2>
-            <div className="grid grid-cols-1 gap-4">
-              <button
-                onClick={() => setSelectedRole('requester')}
-                className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
-              >
-                <span className="text-lg font-medium">Requester</span>
-              </button>
-              <button
-                onClick={() => setSelectedRole('approver')}
-                className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
-              >
-                <span className="text-lg font-medium">Approver</span>
-              </button>
-              <button
-                onClick={() => setSelectedRole('admin')}
-                className="flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50"
-              >
-                <span className="text-lg font-medium">Admin</span>
-              </button>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Waiting for role assignment...
+              </h2>
+              <p className="mt-2 text-center text-sm text-gray-600">
+                Please contact your administrator to assign you a role.
+              </p>
             </div>
           </div>
         </div>
@@ -175,7 +155,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <NotificationToast />
+      {notifications.map((notification) => (
+        <NotificationToast
+          key={notification.id}
+          message={notification.message}
+          type={notification.type}
+          onClose={() => removeNotification(notification.id)}
+        />
+      ))}
       {renderContent()}
     </div>
   );

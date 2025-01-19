@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { PaymentVoucher, UserRole, User, AccountHead } from '../types';
 import PaymentList from './PaymentList';
 import NewPaymentForm from './NewPaymentForm';
@@ -6,6 +6,7 @@ import AdminDashboard from './AdminDashboard';
 import { IndianRupee, Clock, CheckCircle, XCircle, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { NotificationContext } from '../context/NotificationContext';
 
 interface DashboardProps {
   session: Session;
@@ -32,6 +33,8 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { addNotification } = useContext(NotificationContext) || { addNotification: () => {} };
+
   const fetchUserProfile = useCallback(async () => {
     try {
       const { data: profiles, error } = await supabase
@@ -39,7 +42,13 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         .select('*')
         .eq('id', session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to fetch user profile'
+        });
+        return;
+      }
 
       if (profiles) {
         const formattedUsers: User[] = profiles.map((profile: ProfileData) => ({
@@ -55,9 +64,12 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         setUsers(formattedUsers);
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to fetch user profile'
+      });
     }
-  }, [session.user.id]);
+  }, [session.user.id, addNotification]);
 
   const fetchAccountHeads = useCallback(async () => {
     try {
@@ -67,7 +79,13 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         .eq('active', true)
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to fetch account heads'
+        });
+        return;
+      }
 
       if (data) {
         setAccountHeads(data.map(head => ({
@@ -81,9 +99,12 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         })));
       }
     } catch (error) {
-      console.error('Error fetching account heads:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to fetch account heads'
+      });
     }
-  }, []);
+  }, [addNotification]);
 
   const fetchVouchers = useCallback(async () => {
     try {
@@ -103,7 +124,13 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to fetch vouchers'
+        });
+        return;
+      }
 
       if (data) {
         const formattedVouchers: PaymentVoucher[] = data.map(voucher => ({
@@ -128,11 +155,14 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         setVouchers(formattedVouchers);
       }
     } catch (error) {
-      console.error('Error fetching vouchers:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to fetch vouchers'
+      });
     } finally {
       setLoading(false);
     }
-  }, [activeTab, role, session.user.id]);
+  }, [activeTab, role, session.user.id, addNotification]);
 
   useEffect(() => {
     fetchUserProfile();
@@ -160,10 +190,23 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
           requested_by: user.id,
         });
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to create payment voucher'
+        });
+        return;
+      }
+      addNotification({
+        type: 'success',
+        message: 'Payment voucher created successfully'
+      });
       fetchVouchers();
     } catch (error) {
-      console.error('Error creating payment voucher:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to create payment voucher'
+      });
     }
   };
 
@@ -181,10 +224,23 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to approve voucher'
+        });
+        return;
+      }
+      addNotification({
+        type: 'success',
+        message: 'Voucher approved successfully'
+      });
       fetchVouchers();
     } catch (error) {
-      console.error('Error approving voucher:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to approve voucher'
+      });
     }
   };
 
@@ -202,16 +258,31 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        addNotification({
+          type: 'error',
+          message: 'Failed to reject voucher'
+        });
+        return;
+      }
+      addNotification({
+        type: 'success',
+        message: 'Voucher rejected successfully'
+      });
       fetchVouchers();
     } catch (error) {
-      console.error('Error rejecting voucher:', error);
+      addNotification({
+        type: 'error',
+        message: 'Failed to reject voucher'
+      });
     }
   };
 
-  const handleDownload = (voucher: PaymentVoucher) => {
-    // TODO: Implement PDF generation and download
-    console.log('Downloading voucher:', voucher);
+  const downloadVoucher = () => {
+    addNotification({
+      type: 'info',
+      message: 'Download functionality not implemented yet'
+    });
   };
 
   return (
@@ -256,16 +327,49 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
             users={users}
             accountHeads={accountHeads}
             onAddUser={async (user) => {
-              // Add user implementation
-              console.log('Adding user:', user);
+              try {
+                const { error } = await supabase.from('user_roles').insert([user]);
+                if (error) throw error;
+                addNotification({
+                  type: 'success',
+                  message: 'User added successfully'
+                });
+              } catch (error) {
+                addNotification({
+                  type: 'error',
+                  message: 'Failed to add user'
+                });
+              }
             }}
             onDeleteUser={async (id) => {
-              // Delete user implementation
-              console.log('Deleting user:', id);
+              try {
+                const { error } = await supabase.from('user_roles').delete().eq('id', id);
+                if (error) throw error;
+                addNotification({
+                  type: 'success',
+                  message: 'User deleted successfully'
+                });
+              } catch (error) {
+                addNotification({
+                  type: 'error',
+                  message: 'Failed to delete user'
+                });
+              }
             }}
             onDeleteAccountHead={async (id) => {
-              // Delete account head implementation
-              console.log('Deleting account head:', id);
+              try {
+                const { error } = await supabase.from('account_heads').delete().eq('id', id);
+                if (error) throw error;
+                addNotification({
+                  type: 'success',
+                  message: 'Account head deleted successfully'
+                });
+              } catch (error) {
+                addNotification({
+                  type: 'error',
+                  message: 'Failed to delete account head'
+                });
+              }
             }}
           />
         ) : (
@@ -346,7 +450,7 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
                     vouchers={vouchers}
                     onApprove={handleApprove}
                     onReject={handleReject}
-                    onDownload={handleDownload}
+                    onDownload={downloadVoucher}
                     userRole={role}
                   />
                 )}

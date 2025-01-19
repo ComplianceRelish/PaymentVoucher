@@ -5,35 +5,13 @@ import type { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-// Debug configuration (without exposing full key)
-console.log('Supabase Configuration Check:', {
-  url: supabaseUrl,
-  keyLength: supabaseKey?.length || 0,
-  keyPrefix: supabaseKey?.substring(0, 8),
-  mode: import.meta.env.MODE,
-  env: {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseKey,
-    fullUrl: supabaseUrl
-  }
-});
-
 // Validate configuration
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error(
-    'Missing Supabase configuration. Please check your environment variables:\n' +
-    `VITE_SUPABASE_URL: ${supabaseUrl ? '✓' : '✗'}\n` +
-    `VITE_SUPABASE_ANON_KEY: ${supabaseKey ? '✓' : '✗'}`
-  );
+  throw new Error('Missing Supabase environment variables');
 }
 
 // Validate key format
 if (!supabaseKey.startsWith('eyJ') || supabaseKey.length < 160) {
-  console.error('Invalid API key format:', {
-    startsWithEyJ: supabaseKey.startsWith('eyJ'),
-    length: supabaseKey.length,
-    prefix: supabaseKey.substring(0, 8)
-  });
   throw new Error(
     'Invalid Supabase API key format. The anon key should:\n' +
     '1. Start with "eyJ"\n' +
@@ -102,7 +80,6 @@ export const createUser = async (userData: {
 
     return { profile };
   } catch (error) {
-    console.error('Error creating user:', error);
     throw error;
   }
 };
@@ -114,15 +91,19 @@ export const updateUser = async (id: string, userData: {
   role?: string; 
   active?: boolean 
 }) => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      ...userData,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        ...userData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
 
-  if (error) throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const deleteUser = async (userId: string) => {
@@ -134,7 +115,6 @@ export const deleteUser = async (userId: string) => {
 
     if (profileError) throw profileError;
   } catch (error) {
-    console.error('Error deleting user:', error);
     throw error;
   }
 };

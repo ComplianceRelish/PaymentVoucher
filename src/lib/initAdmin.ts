@@ -1,26 +1,24 @@
 import { supabase } from './supabase';
 
-export const initializeAdmin = async () => {
+export async function initializeAdmin() {
   try {
-    const adminEmail = import.meta.env.ADMIN_EMAIL;
-    const adminPassword = import.meta.env.ADMIN_PASSWORD;
+    // Check for admin credentials in environment variables
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
 
     if (!adminEmail || !adminPassword) {
-      console.warn('Admin credentials not found in environment variables');
-      return;
+      throw new Error('Admin credentials not found in environment variables');
     }
 
-    // Check if admin already exists
+    // Check if admin user already exists
     const { data: existingAdmin } = await supabase
-      .from('profiles')
+      .from('admins')
       .select('*')
       .eq('email', adminEmail)
-      .eq('role', 'admin')
       .single();
 
     if (existingAdmin) {
-      console.log('Admin user already exists');
-      return;
+      return { success: true, message: 'Admin user already exists' };
     }
 
     // Create admin user
@@ -31,20 +29,22 @@ export const initializeAdmin = async () => {
 
     if (authError) throw authError;
 
-    // Update the profile to be admin
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        role: 'admin',
-        active: true,
-        name: 'System Admin',
-      })
-      .eq('id', authData.user!.id);
+    if (!authData.user) {
+      throw new Error('Failed to create admin user');
+    }
 
-    if (profileError) throw profileError;
+    // Add user to admins table
+    const { error: adminError } = await supabase.from('admins').insert([
+      {
+        user_id: authData.user.id,
+        email: adminEmail,
+      },
+    ]);
 
-    console.log('Admin user created successfully');
+    if (adminError) throw adminError;
+
+    return { success: true, message: 'Admin user created successfully' };
   } catch (error) {
-    console.error('Error initializing admin:', error);
+    return { success: false, error };
   }
-};
+}
