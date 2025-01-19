@@ -25,7 +25,9 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
         email: formData.email,
         mobile: formData.mobile,
         role: formData.role,
-        active: formData.active
+        active: formData.active,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       
       await onAddUser(newUser);

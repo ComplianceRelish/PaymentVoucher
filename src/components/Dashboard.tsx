@@ -255,12 +255,18 @@ function Dashboard({ session, role, onLogout }: DashboardProps) {
           <AdminDashboard
             users={users}
             accountHeads={accountHeads}
-            onAddUser={async () => {}}
-            onUpdateUser={async () => {}}
-            onDeleteUser={async () => {}}
-            onAddAccountHead={async () => {}}
-            onUpdateAccountHead={async () => {}}
-            onDeleteAccountHead={async () => {}}
+            onAddUser={async (user) => {
+              // Add user implementation
+              console.log('Adding user:', user);
+            }}
+            onDeleteUser={async (id) => {
+              // Delete user implementation
+              console.log('Deleting user:', id);
+            }}
+            onDeleteAccountHead={async (id) => {
+              // Delete account head implementation
+              console.log('Deleting account head:', id);
+            }}
           />
         ) : (
           <>

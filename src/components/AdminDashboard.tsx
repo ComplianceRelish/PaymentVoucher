@@ -26,30 +26,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDeleteUser = async (userId: string) => {
     try {
       await onDeleteUser(userId);
-      addNotification({
-        message: 'User deleted successfully',
-        type: 'success'
-      });
+      addNotification('User deleted successfully', 'success');
     } catch (error) {
-      addNotification({
-        message: 'Failed to delete user',
-        type: 'error'
-      });
+      addNotification('Failed to delete user', 'error');
     }
   };
 
   const handleDeleteAccountHead = async (accountHeadId: string) => {
     try {
       await onDeleteAccountHead(accountHeadId);
-      addNotification({
-        message: 'Account head deleted successfully',
-        type: 'success'
-      });
+      addNotification('Account head deleted successfully', 'success');
     } catch (error) {
-      addNotification({
-        message: 'Failed to delete account head',
-        type: 'error'
-      });
+      addNotification('Failed to delete account head', 'error');
     }
   };
 

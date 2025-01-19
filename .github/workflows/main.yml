@@ -33,9 +33,6 @@ jobs:
           cat << EOF > .env
           VITE_SUPABASE_URL=https://bvmzjtwvwmjksrjnjbry.supabase.co
           VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_TWILIO_ACCOUNT_SID=${{ secrets.VITE_TWILIO_ACCOUNT_SID }}
-          VITE_TWILIO_AUTH_TOKEN=${{ secrets.VITE_TWILIO_AUTH_TOKEN }}
-          VITE_TWILIO_PHONE_NUMBER=${{ secrets.VITE_TWILIO_PHONE_NUMBER }}
           EOF
 
       - name: Lint
@@ -45,9 +42,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://bvmzjtwvwmjksrjnjbry.supabase.co
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_TWILIO_ACCOUNT_SID: ${{ secrets.VITE_TWILIO_ACCOUNT_SID }}
-          VITE_TWILIO_AUTH_TOKEN: ${{ secrets.VITE_TWILIO_AUTH_TOKEN }}
-          VITE_TWILIO_PHONE_NUMBER: ${{ secrets.VITE_TWILIO_PHONE_NUMBER }}
         run: npm run build
 
       - name: Deploy to Netlify
