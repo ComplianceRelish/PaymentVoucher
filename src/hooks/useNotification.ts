@@ -3,7 +3,7 @@ import { NotificationContext, NotificationType } from '../context/NotificationCo
 
 interface UseNotificationReturn {
   addNotification: (message: string, type: NotificationType) => void;
-  removeNotification: (index: number) => void;
+  removeNotification: (id: string) => void;
 }
 
 export const useNotification = (): UseNotificationReturn => {
@@ -16,6 +16,6 @@ export const useNotification = (): UseNotificationReturn => {
     addNotification: (message: string, type: NotificationType) => {
       context.addNotification({ message, type });
     },
-    removeNotification: context.removeNotification,
+    removeNotification: (id: string) => context.removeNotification(id),
   };
 };

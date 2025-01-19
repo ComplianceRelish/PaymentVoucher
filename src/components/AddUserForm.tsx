@@ -10,7 +10,6 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
   const { addNotification } = useNotification();
   const [formData, setFormData] = useState({
     name: '',
-    username: '',
     email: '',
     mobile: '',
     password: '',
@@ -23,7 +22,6 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
     try {
       const newUser: Omit<User, 'id'> = {
         name: formData.name,
-        username: formData.username,
         email: formData.email,
         mobile: formData.mobile,
         role: formData.role,
@@ -31,15 +29,11 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
       };
       
       await onAddUser(newUser);
-      addNotification({ 
-        message: 'User added successfully',
-        type: 'success'
-      });
+      addNotification('User added successfully', 'success');
       
       // Reset form
       setFormData({
         name: '',
-        username: '',
         email: '',
         mobile: '',
         password: '',
@@ -47,10 +41,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
         active: true
       });
     } catch (error) {
-      addNotification({
-        message: 'Failed to add user',
-        type: 'error'
-      });
+      addNotification('Failed to add user', 'error');
     }
   };
 
@@ -63,18 +54,6 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
-        <input
-          type="text"
-          id="username"
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           required
         />
@@ -135,7 +114,6 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onAddUser }) => {
           type="button"
           onClick={() => setFormData({
             name: '',
-            username: '',
             email: '',
             mobile: '',
             password: '',

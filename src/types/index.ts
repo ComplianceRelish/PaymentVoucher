@@ -19,12 +19,11 @@ export interface PaymentVoucher {
   description: string;
   amount: number;
   status: 'pending' | 'approved' | 'rejected';
-  requestedBy: string;
-  requestedDate: string;
+  createdBy: string;
   approvedBy?: string;
-  approvedDate?: string;
   rejectedBy?: string;
-  rejectedDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AccountHead {
